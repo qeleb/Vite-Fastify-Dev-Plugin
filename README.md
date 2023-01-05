@@ -34,7 +34,7 @@ export default defineConfig({
 Configuring plugin options:
 ```ts
 ViteFastifyDevPlugin({
-  appPath: string (default: './src/server.ts')
-  exportName: string (default: 'app')
+  appPath: string // default: './src/server.ts'
+  exportName: string // default: 'app'
 })
 ```
