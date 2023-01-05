@@ -1,6 +1,8 @@
 # Vite-Fastify-Dev-Plugin
 Use Vite as an HMR dev server for a Fastify instance.
 
+> If you were using `VitePluginNode` for this & annoyed by its lack of maintenance, this is the plugin for you.
+
 How to use:
 ```ts
 /// <reference types="vitest" />
