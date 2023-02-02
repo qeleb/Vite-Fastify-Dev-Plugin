@@ -1,4 +1,4 @@
-import type http from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Connect, Plugin, UserConfig, ViteDevServer } from 'vite';
 
 const PLUGIN_NAME = 'vite-fastify-dev-plugin';
@@ -19,30 +19,21 @@ export const createMiddleware = async (server: ViteDevServer): Promise<Connect.H
   if (typeof plugin.config === 'function') userConfig = await plugin.config({}, { command: 'serve', mode: '' });
   else if (typeof plugin.config?.handler === 'function')
     userConfig = await plugin.config?.handler!({}, { command: 'serve', mode: '' });
-  const config = (userConfig as UserConfig & { VitePluginNodeConfig: PluginConfig }).VitePluginNodeConfig;
+  const config = (userConfig as UserConfig & { ViteFastifyDevPlugin: PluginConfig }).ViteFastifyDevPlugin;
 
-  return async function (
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-    next: Connect.NextFunction
-  ): Promise<void> {
-    let app = (await server.ssrLoadModule(config.appPath))[config.exportName];
+  return async function (req: IncomingMessage, res: ServerResponse, next: Connect.NextFunction): Promise<void> {
+    const app = (await server.ssrLoadModule(config.appPath))[config.exportName];
     if (app === undefined) {
       server.config.logger.error(`Failed to find a named export ${config.exportName} from ${config.appPath}`);
       process.exit(1);
-    } else {
-      app = await app; // App may be a function returning a promise
-      await app.ready();
-      app.routing(req, res);
     }
+    await app.ready();
+    app.routing(req, res);
   };
 };
 
 export const ViteFastifyDevPlugin = (cfg?: PluginConfig) => {
-  const config: PluginConfig = {
-    appPath: cfg?.appPath ?? 'src/server.ts',
-    exportName: cfg?.exportName ?? 'app',
-  };
+  const config = { appPath: cfg?.appPath ?? 'src/server.ts', exportName: cfg?.exportName ?? 'app' } as PluginConfig;
 
   return {
     name: PLUGIN_NAME,
@@ -50,8 +41,8 @@ export const ViteFastifyDevPlugin = (cfg?: PluginConfig) => {
       ({
         build: { ssr: config.appPath, rollupOptions: { input: config.appPath } },
         server: { hmr: false },
-        VitePluginNodeConfig: config,
-      } as UserConfig & { VitePluginNodeConfig: PluginConfig }),
+        ViteFastifyDevPlugin: config,
+      } as UserConfig & { ViteFastifyDevPlugin: PluginConfig }),
     configureServer: async server => {
       server.middlewares.use(await createMiddleware(server));
     },
