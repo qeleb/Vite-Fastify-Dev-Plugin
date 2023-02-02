@@ -1,12 +1,9 @@
+import type { FastifyInstance } from 'fastify';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Connect, Plugin, UserConfig, ViteDevServer } from 'vite';
 
 const PLUGIN_NAME = 'vite-fastify-dev-plugin';
-
-interface PluginConfig {
-  appPath: string;
-  exportName: string;
-}
+type PluginConfig = { appPath: string; exportName: string };
 
 export const createMiddleware = async (server: ViteDevServer): Promise<Connect.HandleFunction> => {
   const plugin = server.config.plugins.find(p => p.name === PLUGIN_NAME) as Plugin;
@@ -21,14 +18,13 @@ export const createMiddleware = async (server: ViteDevServer): Promise<Connect.H
     userConfig = await plugin.config?.handler!({}, { command: 'serve', mode: '' });
   const config = (userConfig as UserConfig & { ViteFastifyDevPlugin: PluginConfig }).ViteFastifyDevPlugin;
 
-  return async function (req: IncomingMessage, res: ServerResponse, next: Connect.NextFunction): Promise<void> {
-    const app = (await server.ssrLoadModule(config.appPath))[config.exportName];
+  return async (req: IncomingMessage, res: ServerResponse, next: Connect.NextFunction) => {
+    const app = (await server.ssrLoadModule(config.appPath))[config.exportName] as FastifyInstance;
     if (app === undefined) {
       server.config.logger.error(`Failed to find a named export ${config.exportName} from ${config.appPath}`);
       process.exit(1);
     }
-    await app.ready();
-    app.routing(req, res);
+    app.ready().then(() => app.routing(req, res));
   };
 };
 
